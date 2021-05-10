@@ -1,23 +1,25 @@
-import {parseCookies} from '@/helpers/index'
+import moment from 'moment'
+import { FaImage } from 'react-icons/fa'
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import { useState } from 'react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
+import Image from 'next/image'
 import Layout from '@/components/Layout'
 import { API_URL } from '@/config/index'
 import styles from '@/styles/Form.module.css'
-export default function AddEventsPage({token}){
+export default function EditEventsPage({evt}){
     const [values,setValues] = useState({
-        name:'',
-        performers:'',
-        venue:'',
-        address:'',
-        date:'',
-        time:'',
-        description:''
+        name:evt.name,
+        performers:evt.performers,
+        venue:evt.venue,
+        address:evt.address,
+        date:evt.date,
+        time:evt.time,
+        description:evt.description
     })
-
+    const [imagePreview,setImagePreview] = useState(evt.image?evt.image.formats.thumbnail.url:null)
     const router = useRouter()
     const handleSubmit = async (e) => {
         e.preventDefault()
@@ -26,19 +28,14 @@ export default function AddEventsPage({token}){
         if(hasEmptyFields){
             toast.error("Please fill all fields")
         }
-        const res = await fetch(`${API_URL}/events`, {
-            method: 'POST',
+        const res = await fetch(`${API_URL}/events/${evt.id}`, {
+            method: 'PUT',
             headers: {
-              'Content-Type': 'application/json',
-              Authorization:`Bearer ${token}`
+              'Content-Type': 'application/json'
             },
             body: JSON.stringify(values),
           })
           if(!res.ok){
-            if(res.status === 403 || res.status === 401){
-              toast.error("No token included")
-              return
-            }
             toast.error("Something went wrong")
           }else{
               const evt = await res.json()
@@ -52,7 +49,7 @@ export default function AddEventsPage({token}){
     return(
         <Layout title="Add event">
             <Link href="/events">Go Back</Link>
-            <h1>Add events</h1>
+            <h1>Edit events</h1>
             <ToastContainer/>
             <form onSubmit={handleSubmit} className={styles.form}>
             <div className={styles.grid}>
@@ -102,7 +99,7 @@ export default function AddEventsPage({token}){
               type='date'
               name='date'
               id='date'
-              value={values.date}
+              value={moment(values.date).format('yyyy-MM-DD')}
               onChange={handleInputChange}
             />
           </div>
@@ -128,18 +125,30 @@ export default function AddEventsPage({token}){
           ></textarea>
         </div>
 
-        <input type='submit' value='Add Event' className='btn' />
+        <input type='submit' value='Update Event' className='btn' />
             </form>
+            <h2>Event Image</h2>
+            {imagePreview?(
+                <Image src={imagePreview} height={100} width={170}/>
+            ):<div>
+                <p>No image Uploaded</p>
+                </div>}
+                <div>
+                    <button className="btn-secondary">
+                        <FaImage/> Set Image
+                    </button>
+                </div>
         </Layout>
     )
 }
 
-export async function getServerSideProps({req}){
-  const {token} = parseCookies(req)
-
-  return{
-    props:{
-      token
+export async function getServerSideProps({params:{id},req}){
+    const res = await fetch(`${API_URL}/events/${id}`)
+    const evt = await res.json()
+    console.log(req.headers.cookie)
+    return {
+        props: {
+            evt
+        }
     }
-  }
 }
